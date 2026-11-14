@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Perry Mason Bingo</title>
+<meta name="description" content="A play-along, infinitely-reshuffling bingo card for watching Perry Mason episodes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Libre+Franklin:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: a single vintage-courtroom "playbill" card, centered; heavy black-ruled 5x5 grid you tap along to while watching, with a BINGO overlay on a win. */
+:root {
+  --paper:#f4efe2;        /* aged cream */
+  --card:#fbf8f0;
+  --ink:#1a1714;          /* near-black ink */
+  --muted:#6f685b;
+  --rule:#1a1714;
+  --accent:#7a1f1f;       /* oxblood */
+  --accent-ink:#f7ecd9;
+  --brass:#9a7736;
+  --tint:#efe6d2;
+  --display:"DM Serif Display", Georgia, "Times New Roman", serif;
+  --body:"Libre Franklin", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15130f; --card:#1f1b16; --ink:#efe7d6; --muted:#a79c87;
+    --rule:#c9b48a; --accent:#cf5b4a; --accent-ink:#1a1310;
+    --brass:#d7b26a; --tint:#2a241c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15130f; --card:#1f1b16; --ink:#efe7d6; --muted:#a79c87;
+  --rule:#c9b48a; --accent:#cf5b4a; --accent-ink:#1a1310;
+  --brass:#d7b26a; --tint:#2a241c; color-scheme: dark;
+}
+*{ box-sizing:border-box; }
+html, body{ min-height:100%; }
+body{
+  background:var(--paper); color:var(--ink); font-family:var(--body); font-size:14px;
+  margin:0;
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+  padding-block:28px 40px;
+  display:flex; flex-direction:column; align-items:center; gap:18px;
+}
+img{ max-width:100%; }
+[hidden]{ display:none !important; }
+.wrap{ width:100%; max-width:560px; display:flex; flex-direction:column; gap:18px; }
+
+.masthead{ text-align:center; }
+.eyebrow{
+  font-size:.7rem; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--accent); font-weight:700; margin:0 0 6px;
+}
+h1{
+  font-family:var(--display); font-weight:400; margin:0;
+  font-size:clamp(2.1rem, 8vw, 3rem); line-height:1; letter-spacing:.01em;
+  text-wrap:balance;
+}
+.tagline{ margin:8px 0 0; color:var(--muted); font-size:.85rem; font-style:italic; }
+
+.card{
+  background:var(--card); border:2px solid var(--rule);
+  box-shadow:6px 6px 0 rgba(26,23,20,.14);
+  padding:14px;
+}
+.card-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:10px; padding:0 2px 10px; border-bottom:2px solid var(--rule); margin-bottom:12px;
+}
+.card-head .k{ font-family:var(--display); font-size:1.05rem; }
+.card-head .n{ font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+
+.grid{
+  display:grid; grid-template-columns:repeat(5,1fr);
+  border-top:2px solid var(--rule); border-left:2px solid var(--rule);
+}
+.cell{
+  position:relative; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+  text-align:center; padding:4px; font-size:clamp(8px,2.5vw,11px); line-height:1.12;
+  font-weight:600; color:var(--ink); background:var(--card);
+  border-right:2px solid var(--rule); border-bottom:2px solid var(--rule);
+  cursor:pointer; user-select:none; -webkit-user-select:none;
+  transition:background .12s ease, color .12s ease;
+  hyphens:manual; overflow-wrap:break-word;
+}
+.cell:nth-child(10n+1),.cell:nth-child(10n+3),.cell:nth-child(10n+5),
+.cell:nth-child(10n+7),.cell:nth-child(10n+9){ background:var(--tint); }
+.cell:hover{ color:var(--accent); }
+.cell.marked{ background:var(--accent); color:var(--accent-ink); }
+.cell.marked::after{
+  content:"\2715"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:var(--display); font-size:2.2rem; color:var(--accent-ink);
+  opacity:.28; pointer-events:none;
+}
+.cell:focus-visible{ outline:3px solid var(--brass); outline-offset:-3px; }
+.cell span{ position:relative; z-index:1; }
+
+.won .card{ border-color:var(--accent); box-shadow:6px 6px 0 var(--accent); }
+
+.banner{
+  text-align:center; font-family:var(--display); color:var(--accent);
+  font-size:clamp(1.4rem,6vw,2rem); letter-spacing:.04em; margin:0;
+}
+.banner small{ display:block; font-family:var(--body); font-style:italic; font-size:.8rem; color:var(--muted); letter-spacing:0; margin-top:2px; }
+
+.controls{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+button{
+  font-family:var(--body); font-weight:700; font-size:.82rem; letter-spacing:.04em;
+  padding:11px 18px; border:2px solid var(--rule); background:var(--card); color:var(--ink);
+  cursor:pointer; transition:background .12s ease, color .12s ease, transform .05s ease;
+}
+button:hover{ background:var(--ink); color:var(--paper); }
+button.primary{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+button.primary:hover{ filter:brightness(1.08); background:var(--accent); color:var(--accent-ink); }
+button:active{ transform:translateY(1px); }
+button:focus-visible{ outline:3px solid var(--brass); outline-offset:2px; }
+
+.share{ text-align:center; font-size:.76rem; color:var(--muted); }
+.share code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink); }
+
+.howto{ font-size:.82rem; color:var(--muted); line-height:1.5; text-align:center; max-width:46ch; margin:0 auto; }
+
+footer{
+  max-width:52ch; margin:0 auto; text-align:center; font-size:.7rem; line-height:1.5;
+  color:var(--muted); border-top:1px solid var(--rule); padding-top:14px;
+}
+
+@media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+
+/* Print: only the card, big and clean. */
+@media print{
+  :root{ --paper:#fff; --card:#fff; --tint:#f1f1f1; --ink:#000; --rule:#000; --accent:#000; }
+  body{ padding:0; display:block; color:#000; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .controls,.howto,footer,.tagline,.banner,.share{ display:none !important; }
+  .wrap{ max-width:none; }
+  .card{ box-shadow:none; border-width:2px; }
+  .cell{ font-size:11pt; }
+  .cell.marked{ background:#fff !important; color:#000 !important; }
+  .cell.marked::after{ display:none; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <p class="eyebrow">Second-screen fan game</p>
+    <h1>Perry Mason Bingo</h1>
+    <p class="tagline">An affectionate tribute to the most gloriously predictable show on television.</p>
+  </div>
+
+  <p class="howto">Start an episode, then tap a square whenever it happens on screen. Five in a row &mdash; across, down, or corner to corner &mdash; and you&rsquo;ve got a verdict.</p>
+
+  <p class="banner" id="banner" hidden>Bingo! <small>Court is adjourned.</small></p>
+
+  <div class="card" id="card">
+    <div class="card-head">
+      <span class="k">Perry Mason Bingo</span>
+      <span class="n" id="cardno">Card &mdash;</span>
+    </div>
+    <div class="grid" id="grid" role="grid" aria-label="Bingo card"></div>
+  </div>
+
+  <div class="controls">
+    <button class="primary" id="new" type="button">New card</button>
+    <button id="clear" type="button">Clear marks</button>
+    <button id="print" type="button">Print this card</button>
+  </div>
+
+  <p class="share">This card&rsquo;s share code: <code id="seedshow">&mdash;</code> &middot; open <code id="seedlink">?seed=&mdash;</code> to play the same card</p>
+
+  <footer>
+    A fan-made tribute, not affiliated with, endorsed by, or connected to the owners of Perry Mason.
+    Character names belong to their respective rights holders. Made for fun, free, and offline &mdash; nothing is tracked or stored.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var SQUARES = [
+    "Judge bangs the gavel",
+    "Defendant is having an affair",
+    "“I object! That’s immaterial, irrelevant, and incompetent!”",
+    "Blackmail is involved",
+    "Killer confesses on the stand",
+    "Murder weapon is a knife or blunt object",
+    "Mistaken or hidden identity",
+    "Perry and Della traveling together",
+    "Hello, Beautiful!",
+    "Murder weapon is a poison or drug",
+    "Scene in the jail interview room",
+    "Episode title uses alliteration",
+    "Gertie mentioned",
+    "Della holding Perry’s arm",
+    "Judge overrules Hamilton Burger",
+    "Della brings Perry coffee or food",
+    "Preliminary hearing, not a trial",
+    "Della and Perry having dinner at a restaurant",
+    "Perry cross-examines Tragg",
+    "Episode involves a boat",
+    "Murder weapon is a gun",
+    "Motive has to do with inheritance",
+    "Paul in a sports car",
+    "Client is a young woman in trouble",
+    "Client lies to Perry",
+    "Court scenes are not in L.A.",
+    "Tragg walks in on Perry near the dead body",
+    "Murder caused by strangulation",
+    "Court clerk swears in a witness"
+  ];
+
+  var grid = document.getElementById("grid");
+  var banner = document.getElementById("banner");
+  var cardno = document.getElementById("cardno");
+  var seedshow = document.getElementById("seedshow");
+  var seedlink = document.getElementById("seedlink");
+
+  // seeded PRNG so a share code reproduces the exact card
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function shuffle(arr, rnd){
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--){
+      var j = Math.floor(rnd() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  var cur = { seed:0, picks:[], marks:[] };
+
+  function readSeedFromUrl(){
+    var m = (location.search || "").match(/[?&]seed=(\d+)/);
+    if (m) return parseInt(m[1], 10);
+    var h = (location.hash || "").replace(/^#/, "");
+    if (/^\d+$/.test(h)) return parseInt(h, 10);
+    return 0;
+  }
+
+  function build(seed){
+    cur.seed = seed >>> 0;
+    var rnd = mulberry32(cur.seed);
+    cur.picks = shuffle(SQUARES, rnd).slice(0, 25);
+    cur.marks = new Array(25).fill(false);
+    render();
+    syncUrl();
+    updateShare();
+  }
+
+  function render(){
+    grid.innerHTML = "";
+    for (var i = 0; i < 25; i++){
+      var c = document.createElement("div");
+      c.className = "cell";
+      c.setAttribute("role", "gridcell");
+      c.setAttribute("tabindex", "0");
+      c.dataset.i = i;
+      var s = document.createElement("span");
+      s.textContent = cur.picks[i];
+      c.appendChild(s);
+      if (cur.marks[i]) c.classList.add("marked");
+      grid.appendChild(c);
+    }
+    cardno.textContent = "Card #" + pad(cur.seed % 10000);
+    checkWin();
+  }
+
+  function pad(n){ n = String(n); while (n.length < 4) n = "0" + n; return n; }
+
+  function toggle(i){
+    cur.marks[i] = !cur.marks[i];
+    grid.children[i].classList.toggle("marked", cur.marks[i]);
+    checkWin();
+  }
+
+  function checkWin(){
+    var m = cur.marks, win = false, k;
+    for (k = 0; k < 5 && !win; k++){
+      if (m[k*5] && m[k*5+1] && m[k*5+2] && m[k*5+3] && m[k*5+4]) win = true;      // rows
+      if (m[k] && m[k+5] && m[k+10] && m[k+15] && m[k+20]) win = true;             // cols
+    }
+    if (!win && m[0] && m[6] && m[12] && m[18] && m[24]) win = true;              // diagonal
+    if (!win && m[4] && m[8] && m[12] && m[16] && m[20]) win = true;              // anti-diagonal
+    banner.hidden = !win;
+    document.body.classList.toggle("won", win);
+  }
+
+  function syncUrl(){
+    try {
+      var u = new URL(location.href);
+      u.searchParams.set("seed", cur.seed);
+      history.replaceState(null, "", u.toString());
+    } catch(e){
+      try { history.replaceState(null, "", "#" + cur.seed); } catch(e2){ location.hash = String(cur.seed); }
+    }
+  }
+  function updateShare(){
+    seedshow.textContent = String(cur.seed);
+    seedlink.textContent = "?seed=" + cur.seed;
+  }
+
+  grid.addEventListener("click", function(e){
+    var cell = e.target.closest(".cell"); if (!cell) return;
+    toggle(parseInt(cell.dataset.i, 10));
+  });
+  grid.addEventListener("keydown", function(e){
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var cell = e.target.closest(".cell"); if (!cell) return;
+    e.preventDefault();
+    toggle(parseInt(cell.dataset.i, 10));
+  });
+
+  document.getElementById("new").addEventListener("click", function(){
+    build((Math.random() * 4294967296) >>> 0);
+  });
+  document.getElementById("clear").addEventListener("click", function(){
+    cur.marks = new Array(25).fill(false);
+    render();
+  });
+  document.getElementById("print").addEventListener("click", function(){
+    window.print();
+  });
+
+  window.addEventListener("popstate", function(){
+    var s = readSeedFromUrl();
+    if (s && s !== cur.seed) build(s);
+  });
+
+  var start = readSeedFromUrl();
+  build(start || ((Math.random() * 4294967296) >>> 0));
+})();
+</script>
+</body>
+</html>
