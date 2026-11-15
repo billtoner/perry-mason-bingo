@@ -27,16 +27,11 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 @media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
+  :root{
     --paper:#15130f; --card:#1f1b16; --ink:#efe7d6; --muted:#a79c87;
     --rule:#c9b48a; --accent:#cf5b4a; --accent-ink:#1a1310;
     --brass:#d7b26a; --tint:#2a241c; color-scheme: dark;
   }
-}
-:root[data-theme="dark"]{
-  --paper:#15130f; --card:#1f1b16; --ink:#efe7d6; --muted:#a79c87;
-  --rule:#c9b48a; --accent:#cf5b4a; --accent-ink:#1a1310;
-  --brass:#d7b26a; --tint:#2a241c; color-scheme: dark;
 }
 *{ box-sizing:border-box; }
 html, body{ min-height:100%; }
@@ -50,6 +45,7 @@ body{
 }
 img{ max-width:100%; }
 [hidden]{ display:none !important; }
+.printonly{ display:none; }
 .wrap{ width:100%; max-width:560px; display:flex; flex-direction:column; gap:18px; }
 
 .masthead{ text-align:center; }
@@ -82,7 +78,7 @@ h1{
 }
 .cell{
   position:relative; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
-  text-align:center; padding:4px; font-size:clamp(8px,2.5vw,11px); line-height:1.12;
+  text-align:center; padding:4px; font-size:clamp(9px, calc(13vw / var(--n,5)), 15px); line-height:1.12;
   font-weight:600; color:var(--ink); background:var(--card);
   border-right:2px solid var(--rule); border-bottom:2px solid var(--rule);
   cursor:pointer; user-select:none; -webkit-user-select:none;
@@ -90,7 +86,7 @@ h1{
   hyphens:manual; overflow-wrap:break-word;
 }
 .cell.tint{ background:var(--tint); }
-.cell:hover{ color:var(--accent); }
+@media (hover:hover){ .cell:hover{ color:var(--accent); } }
 .cell.marked{ background:var(--accent); color:var(--accent-ink); }
 .cell.marked::after{
   content:"\2715"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
@@ -141,9 +137,10 @@ footer{
 
 /* Print: only the card, big and clean. */
 @media print{
-  :root{ --paper:#fff; --card:#fff; --tint:#f1f1f1; --ink:#000; --rule:#000; --accent:#000; }
+  :root{ --paper:#fff; --card:#fff; --tint:#f1f1f1; --ink:#000; --muted:#444; --rule:#000; --accent:#000; }
   body{ padding:0; display:block; color:#000; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .controls,.howto,footer,.tagline,.banner,.share{ display:none !important; }
+  .printonly{ display:inline; }
   .wrap{ max-width:none; }
   .card{ box-shadow:none; border-width:2px; }
   .cell{ font-size:11pt; }
@@ -161,16 +158,17 @@ footer{
     <p class="tagline">An affectionate tribute to the most gloriously predictable show on television.</p>
   </div>
 
-  <p class="howto" id="howto">Start an episode, then tap a square whenever it happens on screen. Five in a row &mdash; across, down, or corner to corner &mdash; and you&rsquo;ve got a verdict.</p>
+  <p class="howto">Start an episode, then tap a square whenever it happens on screen. <span id="rowword">Five</span> in a row &mdash; across, down, or corner to corner &mdash; and you&rsquo;ve got a verdict.</p>
 
-  <p class="banner" id="banner" hidden>Bingo! <small>Court is adjourned.</small></p>
+  <p class="banner" id="banner" role="status" hidden>Bingo! <small>Court is adjourned.</small></p>
 
   <div class="card" id="card">
     <div class="card-head">
       <span class="k">Perry Mason Bingo</span>
       <span class="n" id="cardno">Card &mdash;</span>
+      <span class="n printonly" id="printid"></span>
     </div>
-    <div class="grid" id="grid" role="grid" aria-label="Bingo card"></div>
+    <div class="grid" id="grid" role="group" aria-label="Bingo card"></div>
   </div>
 
   <div class="controls">
@@ -203,7 +201,7 @@ footer{
   var grid = document.getElementById("grid");
   var banner = document.getElementById("banner");
   var cardno = document.getElementById("cardno");
-  var howto = document.getElementById("howto");
+  var rowword = document.getElementById("rowword");
   var btn4 = document.getElementById("size4");
   var btn5 = document.getElementById("size5");
 
@@ -309,13 +307,15 @@ footer{
     if (cur.picks.length !== total) return;   // nothing valid to draw; leave the error state intact
     grid.classList.remove("is-error");
     grid.style.gridTemplateColumns = "repeat(" + N + ",1fr)";
+    grid.style.setProperty("--n", N);                    // size-aware cell font
     grid.innerHTML = "";
     for (i = 0; i < total; i++){
       row = Math.floor(i / N); col = i % N;
       var c = document.createElement("div");
       c.className = "cell" + (((row + col) % 2 === 0) ? " tint" : "");
-      c.setAttribute("role", "gridcell");
+      c.setAttribute("role", "button");
       c.setAttribute("tabindex", "0");
+      c.setAttribute("aria-pressed", cur.marks[i] ? "true" : "false");
       c.dataset.i = i;
       var s = document.createElement("span");
       s.textContent = cur.picks[i].text;
@@ -324,6 +324,8 @@ footer{
       grid.appendChild(c);
     }
     cardno.textContent = "Card #" + pad(cur.seed % 10000);
+    var pidEl = document.getElementById("printid");
+    if (pidEl) pidEl.textContent = "seed " + cur.seed + " · " + cur.size + "×" + cur.size;
     updateHowto();
     updateSizeButtons();
     checkWin();
@@ -332,10 +334,7 @@ footer{
   function pad(n){ n = String(n); while (n.length < 4) n = "0" + n; return n; }
 
   function updateHowto(){
-    if (!howto) return;
-    howto.textContent = "Start an episode, then tap a square whenever it happens on screen. " +
-      (cur.size === 4 ? "Four" : "Five") +
-      " in a row — across, down, or corner to corner — and you’ve got a verdict.";
+    if (rowword) rowword.textContent = (cur.size === 4 ? "Four" : "Five");
   }
   function updateSizeButtons(){
     if (btn4){ btn4.classList.toggle("active", cur.size === 4); btn4.setAttribute("aria-pressed", cur.size === 4 ? "true" : "false"); }
@@ -344,7 +343,9 @@ footer{
 
   function toggle(i){
     cur.marks[i] = !cur.marks[i];
-    grid.children[i].classList.toggle("marked", cur.marks[i]);
+    var cell = grid.children[i];
+    cell.classList.toggle("marked", cur.marks[i]);
+    cell.setAttribute("aria-pressed", cur.marks[i] ? "true" : "false");
     saveMarks();
     checkWin();
   }
@@ -472,6 +473,8 @@ footer{
   // the bare site falls back to the viewer's saved preference
   var urlSize = readSizeFromUrl();
   var startSize = urlSize || (startSeed === null ? savedSize() : 0) || 5;
+  cur.size = startSize;      // reflect the right size on the toggle before the first card paints
+  updateSizeButtons();
 
   function load(){
     grid.classList.remove("is-error");
