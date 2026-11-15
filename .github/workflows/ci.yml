@@ -3,9 +3,9 @@ name: CI & Deploy
 # Tests and lint run on every PR and on pushes to main. The deploy job runs only after
 # the tests pass, so a failing lint can no longer reach players.
 #
-# ACTIVATION (one-time, in repo Settings → Pages): set "Source" to "GitHub Actions".
-# Until then this deploy job will not take over from the legacy "deploy from a branch"
-# build; the site keeps publishing the old way and the deploy job simply won't apply.
+# Pages "Source" is set to "GitHub Actions", so this deploy job is what publishes the site
+# (only the four files staged below). If Pages is ever reset to "deploy from a branch",
+# re-set Source to "GitHub Actions" in Settings → Pages to re-activate this job.
 
 on:
   push:
@@ -23,8 +23,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: lts/*
       - name: Unit tests
@@ -44,13 +44,13 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Stage only the site files
         run: |
           mkdir -p _site
           cp index.html bingo.js squares.txt CNAME _site/
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
