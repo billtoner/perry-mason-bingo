@@ -1,13 +1,15 @@
-# Perry Mason Bingo squares — one per line, as  <text> | <weight 1-5>.
-# weight 5 = happens in almost every episode (easy mark); 1 = rare; no number = 3.
-# Optional 3rd field groups mutually-exclusive squares: <text> | <weight> | <group>.
-#   At most one square per group lands on a card (e.g. the "murder" method squares).
+# Perry Mason Bingo squares — one per line. Full format:  <text> | <weight 1-5> | <group>
+#   weight and group are both optional:  "<text>"  or  "<text> | <weight>"  are valid too.
+# weight 5 = happens in almost every episode (easy mark); 1 = rare; missing/blank = 3.
+# group (3rd field) marks mutually-exclusive squares; at most one per group lands on a card
+#   (e.g. the "murder" method squares). A group needs 2+ members.
 # Add a square by typing a new line. Blank lines and lines starting with "#" are ignored.
-# A card uses N*N of these (16 for 4x4, 25 for 5x5), so keep at least 25 real lines.
+# A card uses N*N of these (16 for 4x4, 25 for 5x5); keep at least 25 (counting a group once).
+# Keep each square to 42 characters or fewer so it fits a 5x5 cell on a phone.
 
 Judge bangs the gavel | 2
 Defendant is having an affair | 2
-“I object! That’s immaterial, irrelevant, and incompetent!” | 4
+“Immaterial, irrelevant, incompetent!” | 4
 Blackmail is involved | 3
 Killer confesses on the stand | 3
 Murder weapon is a knife or blunt object | 3 | murder
@@ -23,7 +25,7 @@ Della holding Perry’s arm | 3
 Judge overrules Hamilton Burger | 4
 Della brings Perry coffee or food | 3
 Preliminary hearing, not a trial | 4
-Della and Perry having dinner at a restaurant | 3
+Della and Perry dining at a restaurant | 3
 Perry cross-examines Tragg | 3
 Episode involves a boat | 1
 Murder weapon is a gun | 4 | murder
@@ -42,9 +44,9 @@ Paul perched on the edge of Perry’s desk | 3
 Paul delivers key evidence just in time | 2
 Della takes shorthand | 4
 Della ushers a client in | 4
-Burger protests Perry’s “fishing expedition” | 2
+Burger: Perry’s “fishing expedition” | 2
 Burger calls Tragg to the stand | 3
 Tragg takes someone downtown | 3
-The client finds the body and picks up the weapon | 3
+Client finds the body, grabs the weapon | 3
 The defendant threatened the victim | 3
-The defendant’s fingerprints are on the murder weapon | 3
+Defendant’s prints on the murder weapon | 3

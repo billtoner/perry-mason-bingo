@@ -1,7 +1,10 @@
 "use strict";
 const { test } = require("node:test");
 const assert = require("node:assert");
-const { mulberry32, weightedPick, parseSquares, hasWin } = require("../bingo.js");
+const {
+  mulberry32, weightedPick, parseSquares, capacity, cardFingerprint,
+  readSeed, readSize, encodeMarks, decodeMarks, hasWin,
+} = require("../bingo.js");
 
 function synth(n) {
   const a = [];
@@ -10,11 +13,40 @@ function synth(n) {
 }
 const texts = (card) => card.map((p) => p.text);
 
-test("mulberry32 is deterministic for a seed", () => {
+test("mulberry32 is deterministic and pinned to a known value", () => {
   const a = mulberry32(42), b = mulberry32(42);
   const seqA = [a(), a(), a()], seqB = [b(), b(), b()];
   assert.deepStrictEqual(seqA, seqB);
   assert.ok(seqA[0] >= 0 && seqA[0] < 1);
+  // Known-answer: if this changes, every previously shared link produces a different card.
+  assert.strictEqual(mulberry32(42)(), 0.6011037519201636);
+});
+
+test("golden card: a fixed synthetic list + seed + size yields a fixed board", () => {
+  // Synthetic list (not squares.txt) so content edits never break this; pins the whole draw order.
+  const items = synth(30);
+  const card = texts(weightedPick(items, 16, mulberry32(7)));
+  assert.deepStrictEqual(card, [
+    "S1", "S3", "S29", "S19", "S14", "S12", "S13", "S8",
+    "S18", "S24", "S6", "S4", "S25", "S17", "S9", "S21",
+  ]);
+});
+
+test("weightedPick biases toward heavier squares (fails if weights are ignored)", () => {
+  const items = [
+    { text: "H1", weight: 5, group: "" }, { text: "H2", weight: 5, group: "" },
+    { text: "L1", weight: 1, group: "" }, { text: "L2", weight: 1, group: "" },
+  ];
+  for (let i = 0; i < 40; i++) items.push({ text: "M" + i, weight: 3, group: "" });
+  let heavy = 0, light = 0;
+  for (let s = 0; s < 4000; s++) {
+    const names = texts(weightedPick(items, 16, mulberry32(s)));
+    heavy += names.filter((t) => t[0] === "H").length;
+    light += names.filter((t) => t[0] === "L").length;
+  }
+  // With the w^2 mapping a weight-5 square is 25x a weight-1; even over a partial draw it dominates.
+  // A flat eff() (return 1) makes heavy ~= light and trips this.
+  assert.ok(heavy > light * 3, `expected heavy >> light, got heavy=${heavy} light=${light}`);
 });
 
 test("weightedPick reproduces the same card for a seed+size, differs across seeds", () => {
@@ -30,17 +62,63 @@ test("weightedPick reproduces the same card for a seed+size, differs across seed
   }
 });
 
-test("weightedPick keeps at most one square per group", () => {
+test("weightedPick keeps at most one square per group, fills the card, and does draw grouped squares", () => {
   const items = [
     { text: "A", weight: 3, group: "m" }, { text: "B", weight: 3, group: "m" },
     { text: "C", weight: 3, group: "m" }, { text: "D", weight: 2, group: "m" },
   ];
   for (let i = 5; i < 60; i++) items.push({ text: "F" + i, weight: 3, group: "" });
+  let everDrewGroup = false;
   for (let s = 0; s < 500; s++) {
     const card = weightedPick(items, 25, mulberry32(s));
+    assert.strictEqual(card.length, 25, `seed ${s} did not fill the card`);
     const inM = card.filter((p) => p.group === "m").length;
     assert.ok(inM <= 1, `seed ${s} drew ${inM} group-m squares`);
+    if (inM === 1) everDrewGroup = true;
   }
+  // guard against a bug that silently never draws grouped squares (the old test passed if so)
+  assert.ok(everDrewGroup, "a grouped square was never drawn across 500 seeds");
+});
+
+test("weightedPick returns at most the pool size, and stops when a group exhausts it", () => {
+  assert.strictEqual(weightedPick(synth(5), 25, mulberry32(1)).length, 5);
+  const allOneGroup = [
+    { text: "A", weight: 3, group: "m" }, { text: "B", weight: 3, group: "m" },
+    { text: "C", weight: 3, group: "m" },
+  ];
+  assert.strictEqual(weightedPick(allOneGroup, 16, mulberry32(1)).length, 1);
+});
+
+test("capacity counts a group once and ungrouped squares individually", () => {
+  assert.strictEqual(capacity([{ group: "" }, { group: "" }, { group: "m" }, { group: "m" }, { group: "n" }]), 4);
+  assert.strictEqual(capacity([]), 0);
+});
+
+test("cardFingerprint is stable, order-sensitive and text-sensitive", () => {
+  const a = [{ text: "A" }, { text: "B" }];
+  assert.strictEqual(cardFingerprint(a), cardFingerprint([{ text: "A" }, { text: "B" }]));
+  assert.notStrictEqual(cardFingerprint(a), cardFingerprint([{ text: "B" }, { text: "A" }]));
+  assert.notStrictEqual(cardFingerprint(a), cardFingerprint([{ text: "A" }, { text: "C" }]));
+});
+
+test("readSeed / readSize parse URLs, with seed 0 present and out-of-range size absent", () => {
+  assert.strictEqual(readSeed("?seed=0", ""), 0);          // 0 is a real seed
+  assert.strictEqual(readSeed("?seed=42&size=4", ""), 42);
+  assert.strictEqual(readSeed("", "#7"), 7);
+  assert.strictEqual(readSeed("?size=5", "#nope"), null);
+  assert.strictEqual(readSeed("", ""), null);
+  assert.strictEqual(readSize("?size=4"), 4);
+  assert.strictEqual(readSize("?size=5"), 5);
+  assert.strictEqual(readSize("?size=3"), 0);              // out of range
+  assert.strictEqual(readSize("?seed=1"), 0);              // absent
+});
+
+test("encodeMarks / decodeMarks round-trip; decode rejects wrong length or non-string", () => {
+  const m = [true, false, true, true];
+  assert.strictEqual(encodeMarks(m), "1011");
+  assert.deepStrictEqual(decodeMarks("1011", 4), m);
+  assert.strictEqual(decodeMarks("101", 4), null);
+  assert.strictEqual(decodeMarks(null, 4), null);
 });
 
 test("parseSquares handles weights, groups, blanks, bad input and duplicates", () => {
@@ -68,6 +146,30 @@ test("parseSquares handles weights, groups, blanks, bad input and duplicates", (
   assert.strictEqual(warn.length, 3); // bad weight, float, duplicate
   assert.ok(warn.some((w) => /invalid weight "9"/.test(w)));
   assert.ok(warn.some((w) => /duplicate square "Good"/.test(w)));
+});
+
+test("parseSquares: null-proto names, case-insensitive dups, empty text and extra fields", () => {
+  const warn = [];
+  const out = parseSquares(
+    [
+      "Constructor | 3",      // must NOT be a phantom duplicate (Object.prototype)
+      "__proto__",            // same
+      "| 3",                  // weight but no text -> warn + skip
+      "B | 2 | G | extra",    // extra field -> warn; group lower-cased
+      "Dup",
+      "dup",                  // case-insensitive duplicate -> warn + skip
+    ].join("\n"),
+    (m) => warn.push(m)
+  );
+  assert.deepStrictEqual(out, [
+    { text: "Constructor", weight: 3, group: "" },
+    { text: "__proto__", weight: 3, group: "" },
+    { text: "B", weight: 2, group: "g" },
+    { text: "Dup", weight: 3, group: "" },
+  ]);
+  assert.ok(warn.some((w) => /no square text/.test(w)));
+  assert.ok(warn.some((w) => /extra field/.test(w)));
+  assert.ok(warn.some((w) => /duplicate square "dup"/.test(w)));
 });
 
 test("hasWin detects every line at N=4 and N=5 and no false positives", () => {
