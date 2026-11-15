@@ -101,6 +101,9 @@ h1{
 .cell:focus-visible{ outline:3px solid var(--brass); outline-offset:-3px; }
 .cell span{ position:relative; z-index:1; }
 
+.grid.is-error{ display:block; border:0; }
+.loaderr{ padding:28px 16px; margin:0; text-align:center; color:var(--muted); font-size:.9rem; line-height:1.5; }
+
 .won .card{ border-color:var(--accent); box-shadow:6px 6px 0 var(--accent); }
 
 .banner{
@@ -184,37 +187,8 @@ footer{
 <script>
 (function(){
   "use strict";
-  var SQUARES = [
-    "Judge bangs the gavel",
-    "Defendant is having an affair",
-    "“I object! That’s immaterial, irrelevant, and incompetent!”",
-    "Blackmail is involved",
-    "Killer confesses on the stand",
-    "Murder weapon is a knife or blunt object",
-    "Mistaken or hidden identity",
-    "Perry and Della traveling together",
-    "Hello, Beautiful!",
-    "Murder weapon is a poison or drug",
-    "Scene in the jail interview room",
-    "Episode title uses alliteration",
-    "Gertie mentioned",
-    "Della holding Perry’s arm",
-    "Judge overrules Hamilton Burger",
-    "Della brings Perry coffee or food",
-    "Preliminary hearing, not a trial",
-    "Della and Perry having dinner at a restaurant",
-    "Perry cross-examines Tragg",
-    "Episode involves a boat",
-    "Murder weapon is a gun",
-    "Motive has to do with inheritance",
-    "Paul in a sports car",
-    "Client is a young woman in trouble",
-    "Client lies to Perry",
-    "Court scenes are not in L.A.",
-    "Tragg walks in on Perry near the dead body",
-    "Murder caused by strangulation",
-    "Court clerk swears in a witness"
-  ];
+  // Squares are maintained in squares.txt (one per line), fetched at load.
+  var SQUARES = [];
 
   var grid = document.getElementById("grid");
   var banner = document.getElementById("banner");
@@ -251,6 +225,10 @@ footer{
   }
 
   function build(seed){
+    if (SQUARES.length < 25){
+      showError("Need at least 25 squares to make a card (found " + SQUARES.length + "). Check squares.txt.");
+      return;
+    }
     cur.seed = seed >>> 0;
     var rnd = mulberry32(cur.seed);
     cur.picks = shuffle(SQUARES, rnd).slice(0, 25);
@@ -339,8 +317,35 @@ footer{
     if (s && s !== cur.seed) build(s);
   });
 
+  function parseSquares(text){
+    return text.split(/\r?\n/)
+      .map(function(s){ return s.trim(); })
+      .filter(function(s){ return s && s.charAt(0) !== "#"; });
+  }
+
+  function showError(msg){
+    grid.classList.add("is-error");
+    grid.innerHTML = "";
+    var p = document.createElement("p");
+    p.className = "loaderr";
+    p.textContent = msg;
+    grid.appendChild(p);
+    cardno.textContent = "Card —";
+    banner.hidden = true;
+    document.body.classList.remove("won");
+  }
+
   var start = readSeedFromUrl();
-  build(start || ((Math.random() * 4294967296) >>> 0));
+  fetch("squares.txt", { cache: "no-cache" })
+    .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+    .then(function(text){
+      grid.classList.remove("is-error");
+      SQUARES = parseSquares(text);
+      build(start || ((Math.random() * 4294967296) >>> 0));
+    })
+    .catch(function(){
+      showError("Couldn’t load the squares list. Reload the page to try again.");
+    });
 })();
 </script>
 </body>

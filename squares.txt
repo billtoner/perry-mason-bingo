@@ -1,0 +1,33 @@
+# Perry Mason Bingo squares — one per line.
+# Add a square by typing a new line. Blank lines and lines starting with "#" are ignored.
+# A card uses 25 of these at random, so keep at least 25 real lines.
+
+Judge bangs the gavel
+Defendant is having an affair
+“I object! That’s immaterial, irrelevant, and incompetent!”
+Blackmail is involved
+Killer confesses on the stand
+Murder weapon is a knife or blunt object
+Mistaken or hidden identity
+Perry and Della traveling together
+Hello, Beautiful!
+Murder weapon is a poison or drug
+Scene in the jail interview room
+Episode title uses alliteration
+Gertie mentioned
+Della holding Perry’s arm
+Judge overrules Hamilton Burger
+Della brings Perry coffee or food
+Preliminary hearing, not a trial
+Della and Perry having dinner at a restaurant
+Perry cross-examines Tragg
+Episode involves a boat
+Murder weapon is a gun
+Motive has to do with inheritance
+Paul in a sports car
+Client is a young woman in trouble
+Client lies to Perry
+Court scenes are not in L.A.
+Tragg walks in on Perry near the dead body
+Murder caused by strangulation
+Court clerk swears in a witness
