@@ -1,7 +1,7 @@
 # Design: squares list in a plain-text file
 
 **Date:** 2026-11-14
-**Status:** proposed
+**Status:** implemented (2026-11-14)
 
 ## Intent / why
 Make adding bingo squares the single, friction-free edit. Today the list is a

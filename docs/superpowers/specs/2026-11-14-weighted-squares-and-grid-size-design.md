@@ -1,7 +1,7 @@
 # Design: weighted squares + selectable 4×4 / 5×5 grid
 
 **Date:** 2026-11-14
-**Status:** proposed
+**Status:** implemented (2026-11-14)
 
 ## Intent / why
 Two linked improvements to make the game fairer and more flexible:
@@ -54,9 +54,8 @@ Paul wearing a tweed suit        ← no "| n" still valid, defaults to 3
   text (trimmed); right = integer weight. Missing/blank/out-of-range → 3.
 - Blank lines and `#` lines still ignored. Every un-weighted line stays valid,
   so the file is edited exactly as before plus an optional trailing number.
-- The 43 reviewed squares (from `/tmp/perry-mason-squares-weights.txt`) land in
-  `squares.txt` with their weights; the one straight apostrophe normalized to
-  curly for consistency.
+- The 43 reviewed squares land in `squares.txt` with their weights; the one
+  straight apostrophe normalized to curly for consistency.
 
 ## The how
 - **Weighted selection.** Draw N² squares (16 or 25) without replacement, each
@@ -83,7 +82,14 @@ Paul wearing a tweed suit        ← no "| n" still valid, defaults to 3
   their preference; absent/unreadable → 5×5. (Per-viewer only; wrapped in
   try/catch.)
 
-## Left to the builder
-- Exact toggle widget (segmented control vs two buttons) and its label text.
-- Whether flipping size also clears marks (leaning yes, since the grid changes).
-- Print layout already keys off the grid; confirm it honors N.
+## Resolved during implementation
+- Toggle widget: two buttons (`5×5` / `4×4`) with an `active` state, in the controls row.
+- Flipping size rebuilds the current seed at the new size. Marks are no longer lost by it:
+  a later change (sweep pass 2) persists marks per seed+size, so a size round-trip restores them.
+- Print honours N and now also prints the seed and size on the card.
+
+## Follow-up (sweep passes 2–5, same day)
+A code sweep after the initial build added: mark persistence + copy-link + Back (pass 2);
+a steeper weight^2 mapping, exclusive groups and parser warnings (pass 3); size-aware font and
+accessibility (pass 4); extraction of the logic to `bingo.js` with tests, a squares lint and CI,
+plus corrected footer/README claims (pass 5). See `sweep-findings-2026-11-14.md`.
