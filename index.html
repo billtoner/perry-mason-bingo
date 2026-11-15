@@ -199,7 +199,7 @@ footer{
   <footer>
     A fan-made tribute, not affiliated with, endorsed by, or connected to the owners of Perry Mason.
     Character names belong to their respective rights holders. Made for fun and free &mdash; no accounts and no analytics;
-    your grid size and marks are saved only in this browser. Web fonts are loaded from Google.
+    your grid size, marks, and current card are saved only in this browser. Web fonts are loaded from Google.
   </footer>
 </div>
 
@@ -281,6 +281,10 @@ footer{
     return 0;
   }
   function saveSize(n){ try { localStorage.setItem("pmb_size", String(n)); } catch(e){} }
+  // Remember the last card played (seed+size) so returning to the bare site resumes it,
+  // marks and all, instead of dealing a fresh random card. A shared ?seed= link still wins.
+  function saveLast(){ try { localStorage.setItem("pmb_last", cur.seed + "_" + cur.size); } catch(e){} }
+  function readLast(){ try { return Bingo.parseLast(localStorage.getItem("pmb_last")); } catch(e){ return null; } }
 
   function build(seed, size, push){
     var N = (size === 4 || size === 5) ? size : cur.size;
@@ -304,6 +308,7 @@ footer{
     if (restored) touchMarksKey(marksKey());        // keep the card you're looking at from being evicted
     render();
     syncUrl(push);
+    saveLast();                                     // remember this card so a bare revisit resumes it
     loaded = true;
   }
 
@@ -450,11 +455,14 @@ footer{
     return;
   }
 
-  var startSeed = readSeedFromUrl();
-  // a shared link with a seed but no size defaults to 5 (deterministic across viewers);
-  // the bare site falls back to the viewer's saved preference
+  var urlSeed = readSeedFromUrl();
   var urlSize = readSizeFromUrl();
-  var startSize = urlSize || (startSeed === null ? savedSize() : 0) || 5;
+  // On a bare visit (no ?seed), resume the last card played — same seed and size, marks and all —
+  // so pausing mid-episode and coming back later just works. A shared ?seed= link always wins,
+  // so recipients still get that exact card. First-time visitors fall through to a fresh random card.
+  var last = (urlSeed === null) ? readLast() : null;
+  var startSeed = (urlSeed !== null) ? urlSeed : (last ? last.seed : null);
+  var startSize = urlSize || (last ? last.size : 0) || (urlSeed === null ? savedSize() : 0) || 5;
   cur.size = startSize;      // reflect the right size on the toggle before the first card paints
   updateSizeButtons();
 

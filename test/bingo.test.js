@@ -3,7 +3,7 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const {
   mulberry32, weightedPick, parseSquares, capacity, cardFingerprint,
-  readSeed, readSize, encodeMarks, decodeMarks, hasWin,
+  readSeed, readSize, encodeMarks, decodeMarks, parseLast, hasWin,
 } = require("../bingo.js");
 
 function synth(n) {
@@ -119,6 +119,16 @@ test("encodeMarks / decodeMarks round-trip; decode rejects wrong length or non-s
   assert.deepStrictEqual(decodeMarks("1011", 4), m);
   assert.strictEqual(decodeMarks("101", 4), null);
   assert.strictEqual(decodeMarks(null, 4), null);
+});
+
+test("parseLast reads a <seed>_<size> token and rejects junk", () => {
+  assert.deepStrictEqual(parseLast("1234_5"), { seed: 1234, size: 5 });
+  assert.deepStrictEqual(parseLast("0_4"), { seed: 0, size: 4 });     // seed 0 is valid
+  assert.strictEqual(parseLast("1234_3"), null);                       // size out of range
+  assert.strictEqual(parseLast("abc_5"), null);
+  assert.strictEqual(parseLast("5"), null);
+  assert.strictEqual(parseLast(null), null);
+  assert.strictEqual(parseLast(""), null);
 });
 
 test("parseSquares handles weights, groups, blanks, bad input and duplicates", () => {

@@ -108,6 +108,13 @@
     if (typeof str === "string" && str.length === total) return str.split("").map(function (ch) { return ch === "1"; });
     return null;
   }
+  // parse a stored "<seed>_<size>" last-card token into {seed, size}; null if missing/malformed
+  function parseLast(str) {
+    if (typeof str !== "string") return null;
+    var m = /^(\d+)_(4|5)$/.exec(str);
+    if (!m) return null;
+    return { seed: parseInt(m[1], 10) >>> 0, size: parseInt(m[2], 10) };
+  }
 
   // true when marks (length N*N) contain a full row, column or diagonal
   function hasWin(m, N) {
@@ -123,6 +130,6 @@
     mulberry32: mulberry32, eff: eff, weightedPick: weightedPick,
     parseSquares: parseSquares, capacity: capacity, cardFingerprint: cardFingerprint,
     readSeed: readSeed, readSize: readSize, encodeMarks: encodeMarks, decodeMarks: decodeMarks,
-    hasWin: hasWin
+    parseLast: parseLast, hasWin: hasWin
   };
 });

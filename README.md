@@ -17,6 +17,9 @@ Live at **https://perrymason.gamesmarts.net** (see `CNAME`).
 - **Play on screen.** Tap squares to mark them; the page detects a win (any row, column, or
   diagonal) and shows a banner. Your marks and grid-size choice are saved in your browser, so
   reloading mid-episode keeps your progress.
+- **Pick up where you left off.** The last card you played is remembered, so returning to the
+  site later — even the next day — resumes that same card with your marks intact (same browser).
+  "New card" starts a fresh one; a shared `?seed=` link always opens that specific card.
 - **Print option.** "Print this card" renders the current card clean, in black-and-white,
   including its seed and size so a paper card can be reproduced.
 - **Shareable cards.** Every card is defined by a seed and size in the URL
