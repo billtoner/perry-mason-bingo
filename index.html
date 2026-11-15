@@ -200,7 +200,7 @@ footer{
   </div>
 
   <p class="share">
-    <button id="copylink" type="button">Copy link to this card</button>
+    <button id="copylink" type="button">Share / save card</button>
     <span id="copymsg" aria-live="polite"></span>
   </p>
 
@@ -416,12 +416,24 @@ footer{
     if (!loaded) return;   // the URL has no card to share yet
     var url = location.href, msg = document.getElementById("copymsg");
     function flash(text){ if (msg){ msg.textContent = text; if (copyTimer) clearTimeout(copyTimer); copyTimer = setTimeout(function(){ msg.textContent = ""; copyTimer = null; }, 2000); } }
-    if (navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(url).then(function(){ flash("Link copied"); }, function(){ flash("Copy failed — copy the address bar"); });
-    } else if (navigator.share){
-      navigator.share({ title: "Perry Mason Bingo", url: url }).catch(function(){});
+    function copyToClipboard(){
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url).then(function(){ flash("Link copied"); }, function(){ flash("Copy failed — copy the address bar"); });
+      } else {
+        flash("Copy the page URL to share this card");
+      }
+    }
+    // Prefer the native share sheet when available (iOS/macOS Safari): lets the
+    // user save the card to Notes, Messages, Mail, etc. Elsewhere, copy the link.
+    if (navigator.share){
+      navigator.share({ title: "Perry Mason Bingo", url: url }).then(function(){
+        flash("Shared");
+      }, function(err){
+        if (err && err.name === "AbortError") return;   // user dismissed the sheet
+        copyToClipboard();                              // real failure — fall back
+      });
     } else {
-      flash("Copy the page URL to share this card");
+      copyToClipboard();
     }
   });
   // size change keeps the same seed; marks persist per size, so a mis-tap is reversible
