@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Libre+Franklin:ital,wght@0,400;0,600;0,700;1,400&display=swap">
 <style>
-/* Layout: a single vintage-courtroom "playbill" card, centered; heavy black-ruled grid (4x4 or 5x5) you tap along to while watching, with a BINGO overlay on a win. */
+/* Layout: a single vintage-courtroom "playbill" card, centered; heavy black-ruled grid (4x4 or 5x5) you tap along to while watching, with an inline BINGO banner above the card on a win. */
 :root {
   --paper:#f4efe2;        /* aged cream */
   --card:#fbf8f0;
@@ -20,6 +20,7 @@
   --accent-ink:#f7ecd9;
   --brass:#9a7736;
   --tint:#efe6d2;
+  --shadow:rgba(26,23,20,.14);  /* card drop shadow (light) */
   --display:"DM Serif Display", Georgia, "Times New Roman", serif;
   --body:"Libre Franklin", "Helvetica Neue", Arial, sans-serif;
   color-scheme: light;
@@ -30,7 +31,7 @@
   :root{
     --paper:#15130f; --card:#1f1b16; --ink:#efe7d6; --muted:#a79c87;
     --rule:#c9b48a; --accent:#cf5b4a; --accent-ink:#1a1310;
-    --brass:#d7b26a; --tint:#2a241c; color-scheme: dark;
+    --brass:#d7b26a; --tint:#2a241c; --shadow:rgba(0,0,0,.5); color-scheme: dark;
   }
 }
 *{ box-sizing:border-box; }
@@ -62,7 +63,7 @@ h1{
 
 .card{
   background:var(--card); border:2px solid var(--rule);
-  box-shadow:6px 6px 0 rgba(26,23,20,.14);
+  box-shadow:6px 6px 0 var(--shadow);
   padding:14px;
 }
 .card-head{
@@ -73,17 +74,18 @@ h1{
 .card-head .n{ font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
 
 .grid{
-  display:grid; grid-template-columns:repeat(5,1fr);
+  display:grid; grid-template-columns:repeat(5,minmax(0,1fr));
   border-top:2px solid var(--rule); border-left:2px solid var(--rule);
 }
 .cell{
   position:relative; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
-  text-align:center; padding:4px; font-size:clamp(9px, calc(13vw / var(--n,5)), 15px); line-height:1.12;
+  text-align:center; padding:3px; font-size:clamp(8px, calc(13vw / var(--n,5)), 15px); line-height:1.12;
   font-weight:600; color:var(--ink); background:var(--card);
   border-right:2px solid var(--rule); border-bottom:2px solid var(--rule);
   cursor:pointer; user-select:none; -webkit-user-select:none;
   transition:background .12s ease, color .12s ease;
   hyphens:manual; overflow-wrap:break-word;
+  min-width:0; min-height:0; overflow:hidden;   /* let 1fr tracks shrink; clip rather than overflow the card */
 }
 .cell.tint{ background:var(--tint); }
 @media (hover:hover){ .cell:hover{ color:var(--accent); } }
@@ -94,6 +96,7 @@ h1{
   opacity:.28; pointer-events:none;
 }
 .cell:focus-visible{ outline:3px solid var(--brass); outline-offset:-3px; }
+.cell.marked:focus-visible{ outline-color:var(--accent-ink); }  /* brass fails 3:1 on oxblood; accent-ink passes */
 .cell span{ position:relative; z-index:1; }
 
 .grid.is-error{ display:block; border:0; }
@@ -104,8 +107,11 @@ h1{
 .banner{
   text-align:center; font-family:var(--display); color:var(--accent);
   font-size:clamp(1.4rem,6vw,2rem); letter-spacing:.04em; margin:0;
+  visibility:hidden;   /* always occupies its space so a win doesn't shove the card under the finger */
 }
+body.won .banner{ visibility:visible; }
 .banner small{ display:block; font-family:var(--body); font-style:italic; font-size:.8rem; color:var(--muted); letter-spacing:0; margin-top:2px; }
+.visually-hidden{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
 
 .controls{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
 button{
@@ -113,9 +119,11 @@ button{
   padding:11px 18px; border:2px solid var(--rule); background:var(--card); color:var(--ink);
   cursor:pointer; transition:background .12s ease, color .12s ease, transform .05s ease;
 }
-button:hover{ background:var(--ink); color:var(--paper); }
 button.primary{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
-button.primary:hover{ filter:brightness(1.08); background:var(--accent); color:var(--accent-ink); }
+@media (hover:hover){
+  button:hover{ background:var(--ink); color:var(--paper); }
+  button.primary:hover{ filter:brightness(1.08); background:var(--accent); color:var(--accent-ink); }
+}
 button:active{ transform:translateY(1px); }
 button:focus-visible{ outline:3px solid var(--brass); outline-offset:2px; }
 
@@ -141,8 +149,9 @@ footer{
   body{ padding:0; display:block; color:#000; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .controls,.howto,footer,.tagline,.banner,.share{ display:none !important; }
   .printonly{ display:inline; }
+  #cardno{ display:none; }   /* seed + size is shown by #printid; don't print both */
   .wrap{ max-width:none; }
-  .card{ box-shadow:none; border-width:2px; }
+  .card, .won .card{ box-shadow:none; border-width:2px; }
   .cell{ font-size:11pt; }
   .cell.marked{ background:#fff !important; color:#000 !important; }
   .cell.marked::after{ display:none; }
@@ -160,7 +169,8 @@ footer{
 
   <p class="howto">Start an episode, then tap a square whenever it happens on screen. <span id="rowword">Five</span> in a row &mdash; across, down, or corner to corner &mdash; and you&rsquo;ve got a verdict.</p>
 
-  <p class="banner" id="banner" role="status" hidden>Bingo! <small>Court is adjourned.</small></p>
+  <p class="banner" id="banner" aria-hidden="true">Bingo! <small>Court is adjourned.</small></p>
+  <p id="winlive" class="visually-hidden" role="status" aria-live="polite"></p>
 
   <div class="card" id="card">
     <div class="card-head">
@@ -193,7 +203,8 @@ footer{
   </footer>
 </div>
 
-<script src="bingo.js"></script>
+<!-- Bump ?v= whenever bingo.js changes, so a cached index.html can't run stale logic against new squares.txt -->
+<script src="bingo.js?v=2026-11-15"></script>
 <script>
 (function(){
   "use strict";
@@ -202,50 +213,69 @@ footer{
   var SQUARES = [];
 
   var grid = document.getElementById("grid");
-  var banner = document.getElementById("banner");
+  var winlive = document.getElementById("winlive");   // sr-only live region, announced on a win
   var cardno = document.getElementById("cardno");
   var rowword = document.getElementById("rowword");
   var btn4 = document.getElementById("size4");
   var btn5 = document.getElementById("size5");
 
-  var cur = { seed:0, size:5, picks:[], marks:[] };
+  var cur = { seed:0, size:5, picks:[], marks:[], fp:"" };
   var loaded = false;   // a valid card has been built; controls inert until then
-  var hash = "";        // cheap fingerprint of the squares list, for mark-persistence keys
 
-  function listHash(){
-    var s = 0, str = SQUARES.map(function(x){ return x.text; }).join("\u0001"), i;
-    for (i = 0; i < str.length; i++) s = (Math.imul(31, s) + str.charCodeAt(i)) | 0;
-    return (s >>> 0).toString(36);
+  // Marks are keyed by seed + size + a fingerprint of THIS card's squares, so an edit to the
+  // list/weights/groups that changes the draw can never restore marks onto different squares.
+  function marksKey(){ return "pmb_marks_" + cur.seed + "_" + cur.size + "_" + cur.fp; }
+
+  // Bounded, LRU-ordered mark storage so keys don't accumulate forever (orphaned on every list edit).
+  var MARKS_CAP = 24, INDEX_KEY = "pmb_marks_index";
+  function marksIndex(){
+    try { var v = JSON.parse(localStorage.getItem(INDEX_KEY)); return Array.isArray(v) ? v : []; } catch(e){ return []; }
   }
-  function marksKey(){ return "pmb_marks_" + cur.seed + "_" + cur.size + "_" + hash; }
+  function writeMarksIndex(idx){ try { localStorage.setItem(INDEX_KEY, JSON.stringify(idx)); } catch(e){} }
+  function touchMarksKey(key){            // move key to most-recent and evict beyond the cap
+    try {
+      var idx = marksIndex(), at = idx.indexOf(key);
+      if (at !== -1) idx.splice(at, 1);
+      idx.push(key);
+      while (idx.length > MARKS_CAP){ var old = idx.shift(); if (old !== key) try { localStorage.removeItem(old); } catch(e2){} }
+      writeMarksIndex(idx);
+    } catch(e){}
+  }
+  function untrackMarksKey(key){
+    try { var idx = marksIndex(), at = idx.indexOf(key); if (at !== -1){ idx.splice(at, 1); writeMarksIndex(idx); } } catch(e){}
+  }
+  function adoptLegacyMarks(){            // track (and cap) any keys saved before the index existed, without wiping live cards
+    try {
+      var idx = marksIndex(), known = {}, i, k, found = [];
+      for (i = 0; i < idx.length; i++) known[idx[i]] = true;
+      for (i = 0; i < localStorage.length; i++){
+        k = localStorage.key(i);
+        if (k && k.indexOf("pmb_marks_") === 0 && k !== INDEX_KEY && !known[k]) found.push(k);
+      }
+      if (found.length){
+        idx = found.concat(idx);         // legacy keys treated as oldest
+        while (idx.length > MARKS_CAP){ var old = idx.shift(); try { localStorage.removeItem(old); } catch(e2){} }
+        writeMarksIndex(idx);
+      }
+    } catch(e){}
+  }
+
   function saveMarks(){
     try {
-      if (cur.marks.some(Boolean)) localStorage.setItem(marksKey(), cur.marks.map(function(b){ return b ? "1" : "0"; }).join(""));
-      else localStorage.removeItem(marksKey());
+      var key = marksKey();
+      if (cur.marks.some(Boolean)){ localStorage.setItem(key, Bingo.encodeMarks(cur.marks)); touchMarksKey(key); }
+      else { localStorage.removeItem(key); untrackMarksKey(key); }
     } catch(e){}
   }
   function loadMarks(total){
-    try {
-      var v = localStorage.getItem(marksKey());
-      if (v && v.length === total) return v.split("").map(function(ch){ return ch === "1"; });
-    } catch(e){}
+    try { return Bingo.decodeMarks(localStorage.getItem(marksKey()), total); } catch(e){}
     return null;
   }
   function hasMarks(){ return cur.marks.some(Boolean); }
 
-  function readSeedFromUrl(){
-    var m = (location.search || "").match(/[?&]seed=(\d+)/);
-    if (m) return parseInt(m[1], 10);        // 0 is a valid seed, not "absent"
-    var h = (location.hash || "").replace(/^#/, "");
-    if (/^\d+$/.test(h)) return parseInt(h, 10);
-    return null;                             // absent
-  }
+  function readSeedFromUrl(){ return Bingo.readSeed(location.search, location.hash); }
   function randomSeed(){ return (Math.floor(Math.random() * 4294967295) + 1) >>> 0; } // 1..2^32-1, never 0
-  function readSizeFromUrl(){
-    var m = (location.search || "").match(/[?&]size=(\d+)/);
-    if (m){ var n = parseInt(m[1], 10); if (n === 4 || n === 5) return n; }
-    return 0;
-  }
+  function readSizeFromUrl(){ return Bingo.readSize(location.search); }
   function savedSize(){
     try { var n = parseInt(localStorage.getItem("pmb_size"), 10); if (n === 4 || n === 5) return n; } catch(e){}
     return 0;
@@ -255,16 +285,23 @@ footer{
   function build(seed, size, push){
     var N = (size === 4 || size === 5) ? size : cur.size;
     var total = N * N;
-    if (SQUARES.length < total){
-      showError("Need at least " + total + " squares for a " + N + "×" + N + " card (found " + SQUARES.length + "). Check squares.txt.");
+    var cap = Bingo.capacity(SQUARES);             // a group yields at most one square per card
+    if (cap < total){
+      showError("Need at least " + total + " squares for a " + N + "×" + N + " card (have " + cap + " after grouping). Check squares.txt.");
       return;
     }
     cur.size = N;
     cur.seed = seed >>> 0;
     var rnd = Bingo.mulberry32(cur.seed);
     cur.picks = Bingo.weightedPick(SQUARES, total, rnd);
-    var restored = loadMarks(total);               // bring back marks for this exact card, if any
+    if (cur.picks.length !== total){               // defensive: never leave a half-filled card as "loaded"
+      showError("Couldn't fill a " + N + "×" + N + " card from the current squares. Check squares.txt.");
+      return;
+    }
+    cur.fp = Bingo.cardFingerprint(cur.picks);      // key marks to THIS card
+    var restored = loadMarks(total);                // bring back marks for this exact card, if any
     cur.marks = restored || new Array(total).fill(false);
+    if (restored) touchMarksKey(marksKey());        // keep the card you're looking at from being evicted
     render();
     syncUrl(push);
     loaded = true;
@@ -272,9 +309,9 @@ footer{
 
   function render(){
     var N = cur.size, total = N * N, i, row, col;
-    if (cur.picks.length !== total) return;   // nothing valid to draw; leave the error state intact
+    if (cur.picks.length !== total){ showError("Couldn't fill the card. Check squares.txt."); return; }   // never silently blank
     grid.classList.remove("is-error");
-    grid.style.gridTemplateColumns = "repeat(" + N + ",1fr)";
+    grid.style.gridTemplateColumns = "repeat(" + N + ",minmax(0,1fr))";
     grid.style.setProperty("--n", N);                    // size-aware cell font
     grid.innerHTML = "";
     for (i = 0; i < total; i++){
@@ -291,15 +328,13 @@ footer{
       if (cur.marks[i]) c.classList.add("marked");
       grid.appendChild(c);
     }
-    cardno.textContent = "Card #" + pad(cur.seed % 10000);
+    cardno.textContent = "Card #" + cur.seed;   // the real seed: reproducible and matches the share link
     var pidEl = document.getElementById("printid");
     if (pidEl) pidEl.textContent = "seed " + cur.seed + " · " + cur.size + "×" + cur.size;
     updateHowto();
     updateSizeButtons();
     checkWin();
   }
-
-  function pad(n){ n = String(n); while (n.length < 4) n = "0" + n; return n; }
 
   function updateHowto(){
     if (rowword) rowword.textContent = (cur.size === 4 ? "Four" : "Five");
@@ -320,8 +355,8 @@ footer{
 
   function checkWin(){
     var win = Bingo.hasWin(cur.marks, cur.size);
-    banner.hidden = !win;
-    document.body.classList.toggle("won", win);
+    document.body.classList.toggle("won", win);          // shows the always-present banner
+    if (winlive) winlive.textContent = win ? "Bingo! Court is adjourned." : "";   // announce once per win
   }
 
   function syncUrl(push){
@@ -349,21 +384,25 @@ footer{
 
   document.getElementById("new").addEventListener("click", function(){
     if (!loaded) return;
-    if (hasMarks() && !window.confirm("Start a new card? Your current marks will be cleared.")) return;
+    if (hasMarks() && !window.confirm("Start a new card? You can return to this one with your browser's Back button.")) return;
     build(randomSeed(), cur.size, true);
   });
   document.getElementById("clear").addEventListener("click", function(){
     if (!loaded) return;
+    if (hasMarks() && !window.confirm("Clear all marks on this card?")) return;
     cur.marks = new Array(cur.size * cur.size).fill(false);
     saveMarks();
     render();
   });
   document.getElementById("print").addEventListener("click", function(){
+    if (!loaded) return;   // nothing worth printing in the error state
     window.print();
   });
+  var copyTimer = null;
   document.getElementById("copylink").addEventListener("click", function(){
+    if (!loaded) return;   // the URL has no card to share yet
     var url = location.href, msg = document.getElementById("copymsg");
-    function flash(text){ if (msg){ msg.textContent = text; setTimeout(function(){ msg.textContent = ""; }, 2000); } }
+    function flash(text){ if (msg){ msg.textContent = text; if (copyTimer) clearTimeout(copyTimer); copyTimer = setTimeout(function(){ msg.textContent = ""; copyTimer = null; }, 2000); } }
     if (navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(url).then(function(){ flash("Link copied"); }, function(){ flash("Copy failed — copy the address bar"); });
     } else if (navigator.share){
@@ -401,8 +440,14 @@ footer{
       grid.appendChild(b);
     }
     cardno.textContent = "Card —";
-    banner.hidden = true;
+    if (winlive) winlive.textContent = "";
     document.body.classList.remove("won");
+  }
+
+  if (typeof window.Bingo === "undefined" || !window.Bingo){
+    // bingo.js didn't load (blocked, offline, 404) — a retry of squares.txt can't fix this
+    showError("Couldn't load the game code. Reload the page to try again.", false);
+    return;
   }
 
   var startSeed = readSeedFromUrl();
@@ -427,7 +472,7 @@ footer{
       })
       .then(function(text){
         SQUARES = Bingo.parseSquares(text);
-        hash = listHash();
+        adoptLegacyMarks();   // bound any pre-existing mark keys before we add more
         try {
           build(startSeed === null ? randomSeed() : startSeed, startSize);
         } catch(e){
