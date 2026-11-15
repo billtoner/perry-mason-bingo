@@ -127,7 +127,8 @@ button:focus-visible{ outline:3px solid var(--brass); outline-offset:2px; }
 .sizes button.active, .sizes button.active:hover{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
 
 .share{ text-align:center; font-size:.76rem; color:var(--muted); }
-.share code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink); }
+.share button{ font:inherit; font-weight:700; padding:7px 12px; }
+#copymsg{ margin-left:8px; color:var(--accent); font-style:italic; }
 
 .howto{ font-size:.82rem; color:var(--muted); line-height:1.5; text-align:center; max-width:46ch; margin:0 auto; }
 
@@ -182,7 +183,10 @@ footer{
     <button id="print" type="button">Print this card</button>
   </div>
 
-  <p class="share">This card&rsquo;s share code: <code id="seedshow">&mdash;</code> &middot; open <code id="seedlink">?seed=&mdash;</code> to play the same card</p>
+  <p class="share">
+    <button id="copylink" type="button">Copy link to this card</button>
+    <span id="copymsg" aria-live="polite"></span>
+  </p>
 
   <footer>
     A fan-made tribute, not affiliated with, endorsed by, or connected to the owners of Perry Mason.
@@ -199,8 +203,6 @@ footer{
   var grid = document.getElementById("grid");
   var banner = document.getElementById("banner");
   var cardno = document.getElementById("cardno");
-  var seedshow = document.getElementById("seedshow");
-  var seedlink = document.getElementById("seedlink");
   var howto = document.getElementById("howto");
   var btn4 = document.getElementById("size4");
   var btn5 = document.getElementById("size5");
@@ -234,6 +236,28 @@ footer{
 
   var cur = { seed:0, size:5, picks:[], marks:[] };
   var loaded = false;   // a valid card has been built; controls inert until then
+  var hash = "";        // cheap fingerprint of the squares list, for mark-persistence keys
+
+  function listHash(){
+    var s = 0, str = SQUARES.map(function(x){ return x.text; }).join("\u0001"), i;
+    for (i = 0; i < str.length; i++) s = (Math.imul(31, s) + str.charCodeAt(i)) | 0;
+    return (s >>> 0).toString(36);
+  }
+  function marksKey(){ return "pmb_marks_" + cur.seed + "_" + cur.size + "_" + hash; }
+  function saveMarks(){
+    try {
+      if (cur.marks.some(Boolean)) localStorage.setItem(marksKey(), cur.marks.map(function(b){ return b ? "1" : "0"; }).join(""));
+      else localStorage.removeItem(marksKey());
+    } catch(e){}
+  }
+  function loadMarks(total){
+    try {
+      var v = localStorage.getItem(marksKey());
+      if (v && v.length === total) return v.split("").map(function(ch){ return ch === "1"; });
+    } catch(e){}
+    return null;
+  }
+  function hasMarks(){ return cur.marks.some(Boolean); }
 
   function readSeedFromUrl(){
     var m = (location.search || "").match(/[?&]seed=(\d+)/);
@@ -254,7 +278,7 @@ footer{
   }
   function saveSize(n){ try { localStorage.setItem("pmb_size", String(n)); } catch(e){} }
 
-  function build(seed, size){
+  function build(seed, size, push){
     var N = (size === 4 || size === 5) ? size : cur.size;
     var total = N * N;
     if (SQUARES.length < total){
@@ -265,11 +289,10 @@ footer{
     cur.seed = seed >>> 0;
     var rnd = mulberry32(cur.seed);
     cur.picks = weightedPick(SQUARES, total, rnd);
-    cur.marks = new Array(total).fill(false);
+    var restored = loadMarks(total);               // bring back marks for this exact card, if any
+    cur.marks = restored || new Array(total).fill(false);
     render();
-    syncUrl();
-    updateShare();
-    saveSize(N);
+    syncUrl(push);
     loaded = true;
   }
 
@@ -314,6 +337,7 @@ footer{
   function toggle(i){
     cur.marks[i] = !cur.marks[i];
     grid.children[i].classList.toggle("marked", cur.marks[i]);
+    saveMarks();
     checkWin();
   }
 
@@ -333,19 +357,16 @@ footer{
     document.body.classList.toggle("won", win);
   }
 
-  function syncUrl(){
+  function syncUrl(push){
     try {
       var u = new URL(location.href);
       u.searchParams.set("seed", cur.seed);
       u.searchParams.set("size", cur.size);
-      history.replaceState(null, "", u.toString());
+      if (push) history.pushState(null, "", u.toString());
+      else history.replaceState(null, "", u.toString());
     } catch(e){
       try { history.replaceState(null, "", "#" + cur.seed); } catch(e2){ location.hash = String(cur.seed); }
     }
-  }
-  function updateShare(){
-    seedshow.textContent = String(cur.seed);
-    seedlink.textContent = "?seed=" + cur.seed + "&size=" + cur.size;
   }
 
   grid.addEventListener("click", function(e){
@@ -361,19 +382,33 @@ footer{
 
   document.getElementById("new").addEventListener("click", function(){
     if (!loaded) return;
-    build(randomSeed(), cur.size);
+    if (hasMarks() && !window.confirm("Start a new card? Your current marks will be cleared.")) return;
+    build(randomSeed(), cur.size, true);
   });
   document.getElementById("clear").addEventListener("click", function(){
     if (!loaded) return;
     cur.marks = new Array(cur.size * cur.size).fill(false);
+    saveMarks();
     render();
   });
   document.getElementById("print").addEventListener("click", function(){
     window.print();
   });
-  function setSize(n){ if (loaded && n !== cur.size) build(cur.seed, n); }
-  if (btn4) btn4.addEventListener("click", function(){ setSize(4); });
-  if (btn5) btn5.addEventListener("click", function(){ setSize(5); });
+  document.getElementById("copylink").addEventListener("click", function(){
+    var url = location.href, msg = document.getElementById("copymsg");
+    function flash(text){ if (msg){ msg.textContent = text; setTimeout(function(){ msg.textContent = ""; }, 2000); } }
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){ flash("Link copied"); }, function(){ flash("Copy failed — copy the address bar"); });
+    } else if (navigator.share){
+      navigator.share({ title: "Perry Mason Bingo", url: url }).catch(function(){});
+    } else {
+      flash("Copy the page URL to share this card");
+    }
+  });
+  // size change keeps the same seed; marks persist per size, so a mis-tap is reversible
+  function setSize(n){ if (loaded && n !== cur.size) build(cur.seed, n, true); }
+  if (btn4) btn4.addEventListener("click", function(){ saveSize(4); setSize(4); });
+  if (btn5) btn5.addEventListener("click", function(){ saveSize(5); setSize(5); });
 
   window.addEventListener("popstate", function(){
     if (!loaded) return;
@@ -421,7 +456,10 @@ footer{
   }
 
   var startSeed = readSeedFromUrl();
-  var startSize = readSizeFromUrl() || savedSize() || 5;
+  // a shared link with a seed but no size defaults to 5 (deterministic across viewers);
+  // the bare site falls back to the viewer's saved preference
+  var urlSize = readSizeFromUrl();
+  var startSize = urlSize || (startSeed === null ? savedSize() : 0) || 5;
 
   function load(){
     grid.classList.remove("is-error");
@@ -437,6 +475,7 @@ footer{
       })
       .then(function(text){
         SQUARES = parseSquares(text);
+        hash = listHash();
         try {
           build(startSeed === null ? randomSeed() : startSeed, startSize);
         } catch(e){
