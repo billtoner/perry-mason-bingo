@@ -50,8 +50,10 @@ Judge bangs the gavel | 2
 Hello, Beautiful! | 5
 Paul wearing a tweed suit        ← no "| n" still valid, defaults to 3
 ```
-- Parser splits on the **last** `|` (no square text contains `|`). Left =
-  text (trimmed); right = integer weight. Missing/blank/out-of-range → 3.
+- Parser splits on **every** `|` into up to three trimmed fields:
+  `text | weight | group` (no square text contains `|`). Missing/blank/out-of-range
+  weight → 3; the group field is optional. *(Implemented in `bingo.js`; see that file
+  and `test/bingo.test.js` for the authoritative behaviour.)*
 - Blank lines and `#` lines still ignored. Every un-weighted line stays valid,
   so the file is edited exactly as before plus an optional trailing number.
 - The 43 reviewed squares land in `squares.txt` with their weights; the one
@@ -92,4 +94,5 @@ Paul wearing a tweed suit        ← no "| n" still valid, defaults to 3
 A code sweep after the initial build added: mark persistence + copy-link + Back (pass 2);
 a steeper weight^2 mapping, exclusive groups and parser warnings (pass 3); size-aware font and
 accessibility (pass 4); extraction of the logic to `bingo.js` with tests, a squares lint and CI,
-plus corrected footer/README claims (pass 5). See `sweep-findings-2026-11-14.md`.
+plus corrected footer/README claims (pass 5). (Those passes were captured in dated sweep
+reports kept locally during the work, not committed to the repo.)

@@ -4,7 +4,7 @@ A single-page, play-along bingo game for watching *Perry Mason* episodes. Start 
 episode, then tap a square whenever it happens on screen. Four or five in a row — across,
 down, or corner to corner — wins.
 
-Intended to live at a URL on **gamesmarts.net**.
+Live at **https://perrymason.gamesmarts.net** (see `CNAME`).
 
 ## What it does
 
@@ -65,11 +65,17 @@ node scripts/lint-squares.js  # content lint
 
 ## Deploy
 
-Static page — serve the repo from any web host / CDN (it's deployed via GitHub Pages). No
-build step. `squares.txt` is fetched with `cache: no-cache`, but `index.html` is served with
-the host's normal cache lifetime; when you change the `squares.txt` *format* (not just add a
-line), deploy at a quiet time so a visitor holding an old cached `index.html` doesn't briefly
-run the old parser against the new file.
+Static page — serve `index.html`, `bingo.js`, `squares.txt` and `CNAME` from any web host /
+CDN. No build step. Deployment is via GitHub Pages, gated behind the test job in
+`.github/workflows/ci.yml`: on a push to `main` the tests and lint run first, and only on
+green does the deploy job publish those four files. (To activate it, set **Settings → Pages →
+Source** to **GitHub Actions**; until then Pages still builds the legacy way, straight from
+`main`.)
+
+The game logic lives in `bingo.js`, loaded with a `?v=` cache-buster in `index.html`. **Bump
+that `?v=` whenever you change `bingo.js`** so a visitor holding a cached `index.html` can't run
+stale logic (an old parser or draw) against a freshly deployed `squares.txt`. `squares.txt`
+itself is always fetched `cache: no-cache`.
 
 ## A note on copyright
 
